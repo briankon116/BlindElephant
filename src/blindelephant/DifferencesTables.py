@@ -2,7 +2,7 @@
 import os
 import hashlib
 import sys
-import cPickle
+import pickle
 from distutils.version import LooseVersion
 from os.path import join, getsize, isdir
 import traceback
@@ -81,7 +81,7 @@ def computeTables(basepath, versionDirectoryRegex="", directoryExcludeRegex="", 
         for root, dirs, files in os.walk(join(basepath, appdir)):
             
             #print "files before:", files
-            files = filter(lambda d:not re.match(fileExcludeRegex,d), files)
+            files = [d for d in files if not re.match(fileExcludeRegex,d)]
             #print "files after:", files
 
             toremove = []
@@ -106,13 +106,13 @@ def computeTables(basepath, versionDirectoryRegex="", directoryExcludeRegex="", 
                 #print version,join(root, name).replace(dir + "/", "", 1), hashlib.md5(open(join(root, name)).read()).hexdigest()
                 node = (version, path, hash)
 
-                if hashNodes.has_key(hash):
+                if hash in hashNodes:
                     hashNodes[hash].append(node)
                 else:
                     hashNodes[hash] = [node]
                 
-                if pathNodes.has_key(path):
-                    if pathNodes[path].has_key(hash):
+                if path in pathNodes:
+                    if hash in pathNodes[path]:
                         pathNodes[path][hash].append(version)
                     else:
                         pathNodes[path][hash] = [version]
@@ -122,7 +122,7 @@ def computeTables(basepath, versionDirectoryRegex="", directoryExcludeRegex="", 
         #print "%s, %s, %s, %s" % (len(versions), numfiles, len(hashNodes), len(pathNodes))
     
     
-    for key in hashNodes.keys():
+    for key in list(hashNodes.keys()):
         #collect versions implied by this file+path hash, and construct an ordered versions str to use as key
         #TODO add assert that all path and hash are equal for collected versions; definitely an error if they're ever the same
         verlist = sorted([version for (version, path, hash) in hashNodes[key]])
@@ -131,13 +131,13 @@ def computeTables(basepath, versionDirectoryRegex="", directoryExcludeRegex="", 
         #print verliststr, hashNodes[key]
         
         #populate versionNodes for this ordered combination of versions (storing path and hash of first node since they should all be the same)    
-        if versionNodes.has_key(verliststr):
+        if verliststr in versionNodes:
             versionNodes[verliststr].append( (hashNodes[key][0][1], hashNodes[key][0][2]) )
         else:
             versionNodes[verliststr] = [(hashNodes[key][0][1], hashNodes[key][0][2])]   
     
     if DEBUG:
-        print "Processed %s versions with %s files matching filter, resulting in %s unique hashes, %s differentiating paths, and %s version groups." % (len(versions), numfiles, len(hashNodes), len(pathNodes), len(versionNodes))
+        print("Processed %s versions with %s files matching filter, resulting in %s unique hashes, %s differentiating paths, and %s version groups." % (len(versions), numfiles, len(hashNodes), len(pathNodes), len(versionNodes)))
         #f = open("tmptable.txt", "w")
         #f.write("Path Nodes\n==============================\n")
         #f.write(prettyPathNodes(pathNodes))
@@ -159,7 +159,7 @@ def saveTables(filename, pathNodes, versionNodes, versions):
     """Save the results of computeTables to disk.
     """
     f = open(filename, "wb")
-    cPickle.dump((pathNodes, versionNodes, versions), f, -1)
+    pickle.dump((pathNodes, versionNodes, versions), f, -1)
     f.close()
 
 def loadTables(filename, printStats=True, useCaching=True):
@@ -176,11 +176,11 @@ def loadTables(filename, printStats=True, useCaching=True):
         (pathNodes, versionNodes, versions) = __loaded_tables[filename]
     else:
         f = open(filename, "rb")
-        (pathNodes, versionNodes, versions) = cPickle.load(f)
+        (pathNodes, versionNodes, versions) = pickle.load(f)
         f.close()
         __loaded_tables[filename] = (pathNodes, versionNodes, versions)
     if printStats:
-        print "Loaded %s with %s versions, %s differentiating paths, and %s version groups." % (filename, len(versions), len(pathNodes), len(versionNodes))
+        print("Loaded %s with %s versions, %s differentiating paths, and %s version groups." % (filename, len(versions), len(pathNodes), len(versionNodes)))
     return (pathNodes, versionNodes, versions)
 
 
@@ -198,14 +198,14 @@ def prettyPathNode(pathNode):
     
 def prettyVersionNodes(versionNodes):
     ret = ""
-    for key in versionNodes.keys():
+    for key in list(versionNodes.keys()):
         ret += "\n\n"+key+"\n"
         ret += prettyVersionNode(versionNodes[key]) + "\n"
     return ret
 
 def prettyPathNodes(pathNodes):
     ret = ""
-    for path in pathNodes.keys():
+    for path in list(pathNodes.keys()):
         ret += "\n\n" + path + "\n"
         ret += prettyPathNode(pathNodes[path]) + "\n"
     return ret
@@ -215,8 +215,8 @@ def verListStr(verlist):
         
 if __name__ == '__main__':
     if len(sys.argv) != 5:
-        print "Usage:", sys.argv[0], "<basepath> <versionDirectoryRegex> <directoryExcludeRegex> <fileExcludeRegex>"
-        print "Walks all dirs at path that match version directory and computes sets of differences, pruning directories that match directoryExcludeRegex and files that match fileExcludeRegex"
+        print("Usage:", sys.argv[0], "<basepath> <versionDirectoryRegex> <directoryExcludeRegex> <fileExcludeRegex>")
+        print("Walks all dirs at path that match version directory and computes sets of differences, pruning directories that match directoryExcludeRegex and files that match fileExcludeRegex")
         quit(0)
     computeTables(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
 

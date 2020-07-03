@@ -3,9 +3,9 @@ import blindelephant.Configuration as config
 import re
 from BeautifulSoup import BeautifulSoup
 from optparse import OptionParser
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import time
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import os
 
 #====================================================
@@ -28,7 +28,7 @@ def _fetchTemplate(appName, releasesUrl, soupStrainerFunc, downloadsPrefix="", p
     #for file in sorted(knownFiles):
     #    print file
     #print "Fetching: ", releasesUrl
-    f = urllib2.urlopen(releasesUrl)
+    f = urllib.request.urlopen(releasesUrl)
     soup = BeautifulSoup(f.read())
     f.close()
     
@@ -55,15 +55,15 @@ def _fetchTemplate(appName, releasesUrl, soupStrainerFunc, downloadsPrefix="", p
         #throttle to not abuse remote server
         time.sleep(1.5)
         #TODO: add a check that we're not re
-        print "Attempting to fetch:", downloadsPrefix + v['href']
+        print("Attempting to fetch:", downloadsPrefix + v['href'])
         
         #create the url and the request 
         url = downloadsPrefix + v['href']
-        req = urllib2.Request(url)
+        req = urllib.request.Request(url)
         
         # Open the url
         try:
-            f = urllib2.urlopen(req)
+            f = urllib.request.urlopen(req)
             # Open our local file for writing
             local_file_path = config.APPS_PATH + appName + ("-plugins/"+plugin if plugin else "") + "/downloads/"+v['filename']
             #print "Writing", local_file_path
@@ -73,10 +73,10 @@ def _fetchTemplate(appName, releasesUrl, soupStrainerFunc, downloadsPrefix="", p
             local_file.close()
     
         #handle errors
-        except urllib2.HTTPError, e:
-            print "HTTP Error:",e.code , url
-        except urllib2.URLError, e:
-            print "URL Error:",e.reason , url
+        except urllib.error.HTTPError as e:
+            print("HTTP Error:",e.code , url)
+        except urllib.error.URLError as e:
+            print("URL Error:",e.reason , url)
             
     return [v['filename'] for v in newVers]
 
@@ -105,44 +105,44 @@ def updateDbs(apps):
     """
     for app in apps:
         if not os.access(config.getDbPath(app), os.F_OK):
-            print "No db file available for app %s. Creating it from %s..." % (app, config.getAppPath(app))
+            print("No db file available for app %s. Creating it from %s..." % (app, config.getAppPath(app)))
             pathNodes, versionNodes, allversions = dt.computeTables(config.getAppPath(app), config.APP_CONFIG[app]["versionDirectoryRegex"], config.APP_CONFIG[app]["directoryExcludeRegex"], config.APP_CONFIG[app]["fileExcludeRegex"])
             dt.saveTables(config.getDbPath(app), pathNodes, versionNodes, allversions)
         else:
-            print "Found db file for app %s" % app,
+            print("Found db file for app %s" % app, end=' ')
             #print "(path is ", config.getDbPath(app), ")"
             pathNodes, versionNodes, allversions = dt.loadTables(config.getDbPath(app), False)
             versInDb = len(allversions)
-            versOnDisk = len(filter(lambda entry: re.match(config.APP_CONFIG[app]["versionDirectoryRegex"], entry),os.listdir(config.getAppPath(app))))
+            versOnDisk = len([entry for entry in os.listdir(config.getAppPath(app)) if re.match(config.APP_CONFIG[app]["versionDirectoryRegex"], entry)])
 
             #versInDb = set(ver.vstring for ver in allversions)
             #versOnDisk = set([entry for entry in os.listdir(config.getAppPath(app)) if re.match(config.APP_CONFIG[app]["versionDirectoryRegex"], entry)])
             #verDifferences = versInDb ^ versOnDisk
             #print "DB: %s\nDisk: %s\nDiffs: %s" % (versInDb, versOnDisk, verDifferences)
             if versInDb != versOnDisk:
-                print "but it is out of date (%s versions in db, %s versions on disk). Recreating it from %s... " % (versInDb, versOnDisk, config.getAppPath(app))
+                print("but it is out of date (%s versions in db, %s versions on disk). Recreating it from %s... " % (versInDb, versOnDisk, config.getAppPath(app)))
                 pathNodes, versionNodes, allversions = dt.computeTables(config.getAppPath(app), config.APP_CONFIG[app]["versionDirectoryRegex"], config.APP_CONFIG[app]["directoryExcludeRegex"], config.APP_CONFIG[app]["fileExcludeRegex"])
                 dt.saveTables(config.getDbPath(app), pathNodes, versionNodes, allversions)
             else:
-                print "."
+                print(".")
         
         if os.access(config.getAppPluginPath(app), os.F_OK):
-            for plugin in filter(lambda p: os.path.isdir(config.getAppPluginPath(app, p)), sorted(os.listdir(config.getAppPluginPath(app)))):
+            for plugin in [p for p in sorted(os.listdir(config.getAppPluginPath(app))) if os.path.isdir(config.getAppPluginPath(app, p))]:
                 if not os.access(config.getDbPath(app, plugin), os.F_OK):
-                    print "No db file available for %s plugin %s. Creating it from %s..." % (app, plugin, config.getAppPluginPath(app, plugin))
+                    print("No db file available for %s plugin %s. Creating it from %s..." % (app, plugin, config.getAppPluginPath(app, plugin)))
                     pathNodes, versionNodes, allversions = dt.computeTables(config.getAppPluginPath(app, plugin),  plugin+config.APP_CONFIG[app]["pluginsDirectoryRegex"], "none", config.APP_CONFIG[app]["fileExcludeRegex"])
                     dt.saveTables(config.getDbPath(app, plugin), pathNodes, versionNodes, allversions)
                 else:
-                    print "Found db file for %s plugin %s" % (app, plugin),
+                    print("Found db file for %s plugin %s" % (app, plugin), end=' ')
                     pathNodes, versionNodes, allversions = dt.loadTables(config.getDbPath(app, plugin), False)                    
                     versInDb = len(allversions)
-                    versOnDisk = len(filter(lambda entry: re.match(plugin+config.APP_CONFIG[app]["pluginsDirectoryRegex"], entry),os.listdir(config.getAppPluginPath(app, plugin))))
+                    versOnDisk = len([entry for entry in os.listdir(config.getAppPluginPath(app, plugin)) if re.match(plugin+config.APP_CONFIG[app]["pluginsDirectoryRegex"], entry)])
                     if versInDb != versOnDisk:
-                        print "but it is out of date (%s versions in db, %s versions on disk). Recreating it from %s... " % (versInDb, versOnDisk, config.getAppPluginPath(app, plugin))
+                        print("but it is out of date (%s versions in db, %s versions on disk). Recreating it from %s... " % (versInDb, versOnDisk, config.getAppPluginPath(app, plugin)))
                         pathNodes, versionNodes, allversions = dt.computeTables(config.getAppPluginPath(app, plugin), plugin+config.APP_CONFIG[app]["pluginsDirectoryRegex"], config.APP_CONFIG[app]["directoryExcludeRegex"], config.APP_CONFIG[app]["fileExcludeRegex"])
                         dt.saveTables(config.getDbPath(app, plugin), pathNodes, versionNodes, allversions)
                     else:
-                        print "."
+                        print(".")
                     
 
 
@@ -161,30 +161,30 @@ if __name__ == '__main__':
 
     if options.updateDBs:
        if len(args) < 1 or args[0] == "all":
-           args = [app for app in config.APP_CONFIG.keys()]
-       print args
+           args = [app for app in list(config.APP_CONFIG.keys())]
+       print(args)
        updateDbs(args)
        quit()
     
     if len(args) < 1:
-        print "Error: AppName is required\n"
+        print("Error: AppName is required\n")
         parser.print_help()
         quit()
  
     if args[0] == "all":
-        for func in filter(lambda s: s.startswith("fetch"),sorted(globals().keys())):
-            print func
+        for func in [s for s in sorted(globals().keys()) if s.startswith("fetch")]:
+            print(func)
             time.sleep(2)
-            print globals()[func]()
-    elif globals().has_key("fetch"+args[0]):
-        print "Checking for new versions of", args[0]
-        print globals()["fetch"+args[0]]()
+            print(globals()[func]())
+    elif "fetch"+args[0] in globals():
+        print("Checking for new versions of", args[0])
+        print(globals()["fetch"+args[0]]())
         if options.plugins:
-            print "Checking for new versions of", args[0], "plugins"
+            print("Checking for new versions of", args[0], "plugins")
             eval("fetch"+args[0]+"plugins()")
 
     else:
-        print "Error: "+args[0]+" is not supported for fetching latest versions (do it manually or add it here)\n"
+        print("Error: "+args[0]+" is not supported for fetching latest versions (do it manually or add it here)\n")
         parser.print_help()
         quit()
  

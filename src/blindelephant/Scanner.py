@@ -1,5 +1,5 @@
-import Fingerprinters as wafp
-import Loggers as wal
+from . import Fingerprinters as wafp
+from . import Loggers as wal
 from optparse import OptionParser
 import datetime
 
@@ -16,12 +16,12 @@ class ScannerResult(object):
         str = ""
         str += "Scanner Results for %s\n" % url
         
-        for app, vers in self.apps.iteritems():
+        for app, vers in self.apps.items():
             verstrs = [v.vstring for v in vers]
             str += "  - %s: %s\n" % (app, verstrs)
             
-            if self.plugins.has_key(app):
-                for plugin, vers in self.plugins[app].iteritems():
+            if app in self.plugins:
+                for plugin, vers in self.plugins[app].items():
                     verstrs = [v.vstring for v in vers]
                     str += "    -- %s: %s\n" % (plugin, verstrs)
         return str
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
 
     if len(args) < 1:
-        print "Error: url is required argument\n"
+        print("Error: url is required argument\n")
         parser.print_help()
         quit()
 
@@ -81,8 +81,8 @@ if __name__ == '__main__':
     s = Scanner(url, options.plugins)
     s.scan()
     finish = datetime.datetime.now()
-    print s.result
-    print "Fingerprint time: ", finish - start
+    print(s.result)
+    print("Fingerprint time: ", finish - start)
     
     
 

@@ -23,37 +23,37 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
 
     if options.list:
-       print >> wac.DEFAULT_LOGFILE, "Currently configured web apps:", len(wac.APP_CONFIG.keys())
+       print("Currently configured web apps:", len(list(wac.APP_CONFIG.keys())), file=wac.DEFAULT_LOGFILE)
        for app in sorted(wac.APP_CONFIG.keys()):
            pluginsDir = wac.getDbDir(app)
            plugins = os.listdir(pluginsDir) if os.access(pluginsDir, os.F_OK) else []
            plugins = [p for p in plugins if p.endswith(wac.DB_EXTENSION)]
-           print >> wac.DEFAULT_LOGFILE, "%s with %d plugins" % (app, len(plugins))
+           print("%s with %d plugins" % (app, len(plugins)), file=wac.DEFAULT_LOGFILE)
            for p in sorted(plugins):
-               print >> wac.DEFAULT_LOGFILE, " -", p[:-(len(wac.DB_EXTENSION))]
+               print(" -", p[:-(len(wac.DB_EXTENSION))], file=wac.DEFAULT_LOGFILE)
        quit()
     
     if options.updateDB:
         """Added at the request of backbox.org; pretty hacky. May formalize this in the future if there's demand"""
         import tempfile
-        import urllib
+        import urllib.request, urllib.parse, urllib.error
         import os
         import tarfile
         dbtar_url = "http://blindelephant.svn.sourceforge.net/viewvc/blindelephant/trunk/src/blindelephant/dbs/?view=tar"
         untar_dir = os.path.join(wac.getDbDir(), os.path.pardir); #so that dbs/ in tar overlays existing dbs/
     
         tmp = tempfile.NamedTemporaryFile();
-        print >> wac.DEFAULT_LOGFILE, "Fetching latest DB files from", dbtar_url
-        urllib.urlretrieve("http://blindelephant.svn.sourceforge.net/viewvc/blindelephant/trunk/src/blindelephant/dbs/?view=tar", tmp.name)
+        print("Fetching latest DB files from", dbtar_url, file=wac.DEFAULT_LOGFILE)
+        urllib.request.urlretrieve("http://blindelephant.svn.sourceforge.net/viewvc/blindelephant/trunk/src/blindelephant/dbs/?view=tar", tmp.name)
         f = tarfile.open(tmp.name)
-        print >> wac.DEFAULT_LOGFILE, "Extracting to ", untar_dir
+        print("Extracting to ", untar_dir, file=wac.DEFAULT_LOGFILE)
         f.extractall(untar_dir)
         tmp.close()
         quit()
 
     
     if len(args) < 2:
-        print >> wac.DEFAULT_LOGFILE, "Error: url and appName are required arguments unless using -l, -u, or -h\n"
+        print("Error: url and appName are required arguments unless using -l, -u, or -h\n", file=wac.DEFAULT_LOGFILE)
         parser.print_help()
         quit()
     
@@ -64,21 +64,21 @@ if __name__ == '__main__':
 
     if app_name == "guess":
         g = wafp.WebAppGuesser(url)
-        print >> wac.DEFAULT_LOGFILE, "Probing..."
+        print("Probing...", file=wac.DEFAULT_LOGFILE)
         apps = g.guess_apps()
-        print >> wac.DEFAULT_LOGFILE, "Possible apps:"
+        print("Possible apps:", file=wac.DEFAULT_LOGFILE)
         for app in apps:
-            print >> wac.DEFAULT_LOGFILE, app
-    elif not wac.APP_CONFIG.has_key(app_name):
-        print >> wac.DEFAULT_LOGFILE, "Unsupported web app \""+app_name+"\""
+            print(app, file=wac.DEFAULT_LOGFILE)
+    elif app_name not in wac.APP_CONFIG:
+        print("Unsupported web app \""+app_name+"\"", file=wac.DEFAULT_LOGFILE)
         quit()
-    elif wac.APP_CONFIG.has_key(app_name) and not options.skip:
+    elif app_name in wac.APP_CONFIG and not options.skip:
         fp = wafp.WebAppFingerprinter(url, app_name, num_probes=options.numProbes, winnow=options.winnow)
         fp.fingerprint()
     
     if options.pluginName == 'guess':
         if not options.skip:
-            print >> wac.DEFAULT_LOGFILE, "\n\n"
+            print("\n\n", file=wac.DEFAULT_LOGFILE)
         g = wafp.PluginGuesser(url, app_name)
         g.guess_plugins()
     elif options.pluginName:

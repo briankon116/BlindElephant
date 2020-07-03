@@ -1,10 +1,11 @@
-import urllib2
-import BaseHTTPServer
-from httplib import HTTPException 
+import urllib.request, urllib.error, urllib.parse
+import http.server
+from http.client import HTTPException 
 from distutils.version import LooseVersion
 import socket
 import re
 import operator
+from functools import reduce
 
 
 #TODO:
@@ -64,14 +65,14 @@ def identify_error_page(base_url):
 
             #print "error page fingerprint:", error_page_fingerprint
             return error_page_fingerprint
-        except IOError, e:
+        except IOError as e:
             if hasattr(e, 'code'):
                 #if we got an error code back, that's all we need to know:
                 #it doesn't use a custom 404
                 return None
             else:
                 retry -= 1
-        except HTTPException, e2:
+        except HTTPException as e2:
             #might be an httplib exception instead; eg BadStatusLine
             retry -= 1
     return None
@@ -112,7 +113,7 @@ def collapse_version_possibilities(possible_vers):
     """Take a list of version lists and return the intersection set or [] if 
     it's empty
     """
-    ver_sets = [set(v) for v in filter(None,possible_vers)]
+    ver_sets = [set(v) for v in [_f for _f in possible_vers if _f]]
     try:
         ver_set = reduce(lambda a, b: a & b, ver_sets)
     except:
@@ -191,7 +192,7 @@ def pick_fingerprint_files(path_nodes, all_versions):
     #find a path with the best fitness
     candidate_nodes = []
     
-    for path in path_nodes.keys():
+    for path in list(path_nodes.keys()):
         currvers = []
         currhashes = len(path_nodes[path])
         
@@ -223,7 +224,7 @@ def pick_indicator_files(version_nodes, all_versions):
     while len(nodes) < 2 and threshold > 0:
         #try some numbers close to the total number of versions, backing off 
         #until vers isn't empty
-        nodes = filter(lambda k: len(k.split(",")) >= threshold, version_nodes.keys()) 
+        nodes = [k for k in list(version_nodes.keys()) if len(k.split(",")) >= threshold] 
         threshold -= 1;
 
     indicator_files = []
@@ -237,8 +238,8 @@ def urlread_spoof_ua(url):
     """I really hate to do this, but various spam, advertising and domain parking sites
     won't give either a 404 or a consistent landing page without pretending like we're a browser.
     """
-    req = urllib2.Request(url, headers={"User-agent" : "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3"})
-    data = urllib2.urlopen(req, timeout=TIMEOUT).read()
+    req = urllib.request.Request(url, headers={"User-agent" : "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3"})
+    data = urllib.request.urlopen(req, timeout=TIMEOUT).read()
     return data
 
 def pick_winnow_files(possible_ver_list, version_nodes, max_paths):
@@ -250,7 +251,7 @@ def pick_winnow_files(possible_ver_list, version_nodes, max_paths):
     winnow_paths = []
     selected_version_groups = []
     for ver in possible_ver_list:
-        print "for ver: %s  len winnow_paths: %s    max_paths: %s" % (ver, len(winnow_paths), max_paths)
+        print("for ver: %s  len winnow_paths: %s    max_paths: %s" % (ver, len(winnow_paths), max_paths))
         for vergroup in version_nodes:
             #print "  for vergroup:", vergroup
             if ver.vstring in vergroup and len(vergroup.split(",")) < len(possible_ver_list) and vergroup not in selected_version_groups:
