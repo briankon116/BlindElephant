@@ -1,7 +1,7 @@
 import blindelephant.DifferencesTables as dt
 import blindelephant.Configuration as config
 import re
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 from optparse import OptionParser
 import urllib.request, urllib.error, urllib.parse
 import time
@@ -9,7 +9,7 @@ import urllib.request, urllib.parse, urllib.error
 import os
 
 #====================================================
-#This file grabs the latest releases of supported webapps and copies them to the downloads dir of each webapp 
+#This file grabs the latest releases of supported webapps and copies them to the downloads dir of each webapp
 #It should usually be run via cron job
 #====================================================
 
@@ -24,22 +24,22 @@ import os
 def _fetchTemplate(appName, releasesUrl, soupStrainerFunc, downloadsPrefix="", plugin=None):
     knownFiles = os.listdir(config.APPS_PATH + appName + ("-plugins/"+plugin if plugin else "") + "/downloads")
 
-    #print "Known:" 
+    #print "Known:"
     #for file in sorted(knownFiles):
     #    print file
     #print "Fetching: ", releasesUrl
     f = urllib.request.urlopen(releasesUrl)
     soup = BeautifulSoup(f.read())
     f.close()
-    
+
     availableFiles = soupStrainerFunc(soup)
     #print "Available files:"
     #for f in availableFiles:
     #    print f
 
     newVersTemp = [f for f in availableFiles if f['filename'] not in knownFiles]
-    
-    #Some sites, notably sourceforge, offer the same download url twice. 
+
+    #Some sites, notably sourceforge, offer the same download url twice.
     #Uniqify list so as not to re-download a file twice in one session
     #(just converting to set() won't work... dicts aren't hashable)
     newVers = []
@@ -50,17 +50,17 @@ def _fetchTemplate(appName, releasesUrl, soupStrainerFunc, downloadsPrefix="", p
     #print "New files:"
     #for f in availableFiles:
     #    print f
-    
+
     for v in sorted(newVers):
         #throttle to not abuse remote server
         time.sleep(1.5)
         #TODO: add a check that we're not re
         print("Attempting to fetch:", downloadsPrefix + v['href'])
-        
-        #create the url and the request 
+
+        #create the url and the request
         url = downloadsPrefix + v['href']
         req = urllib.request.Request(url)
-        
+
         # Open the url
         try:
             f = urllib.request.urlopen(req)
@@ -71,25 +71,25 @@ def _fetchTemplate(appName, releasesUrl, soupStrainerFunc, downloadsPrefix="", p
             #Write to our local file
             local_file.write(f.read())
             local_file.close()
-    
+
         #handle errors
         except urllib.error.HTTPError as e:
             print("HTTP Error:",e.code , url)
         except urllib.error.URLError as e:
             print("URL Error:",e.reason , url)
-            
+
     return [v['filename'] for v in newVers]
 
 
-#Fetchers for currently supported apps not being released right now, sorry; I don't want to make it easy to abuse the mirrors. 
+#Fetchers for currently supported apps not being released right now, sorry; I don't want to make it easy to abuse the mirrors.
 #Contact me if you need them for some reason.
 
 #example fetchers for new apps
 def _exampleStrainer(soup):
     links = soup.findAll('a', attrs={'href' : lambda s: s and s.endswith('.tar.gz')})
-    
+
     availableFiles = []
-    for link in links:        
+    for link in links:
         availableFiles.append({'href' : link['href'], 'filename' : link.string})
     return availableFiles
 
@@ -99,11 +99,12 @@ def fetchexample():
 
 
 def updateDbs(apps):
-    """Used to create .pkl files for any apps or plugins the are declared 
-    supported but don't have an up-to-date pkl file. 
+    """Used to create .pkl files for any apps or plugins the are declared
+    supported but don't have an up-to-date pkl file.
     Takes a list of appnames.
     """
     for app in apps:
+        print(config.getDbPath(app))
         if not os.access(config.getDbPath(app), os.F_OK):
             print("No db file available for app %s. Creating it from %s..." % (app, config.getAppPath(app)))
             pathNodes, versionNodes, allversions = dt.computeTables(config.getAppPath(app), config.APP_CONFIG[app]["versionDirectoryRegex"], config.APP_CONFIG[app]["directoryExcludeRegex"], config.APP_CONFIG[app]["fileExcludeRegex"])
@@ -125,7 +126,7 @@ def updateDbs(apps):
                 dt.saveTables(config.getDbPath(app), pathNodes, versionNodes, allversions)
             else:
                 print(".")
-        
+
         if os.access(config.getAppPluginPath(app), os.F_OK):
             for plugin in [p for p in sorted(os.listdir(config.getAppPluginPath(app))) if os.path.isdir(config.getAppPluginPath(app, p))]:
                 if not os.access(config.getDbPath(app, plugin), os.F_OK):
@@ -134,7 +135,7 @@ def updateDbs(apps):
                     dt.saveTables(config.getDbPath(app, plugin), pathNodes, versionNodes, allversions)
                 else:
                     print("Found db file for %s plugin %s" % (app, plugin), end=' ')
-                    pathNodes, versionNodes, allversions = dt.loadTables(config.getDbPath(app, plugin), False)                    
+                    pathNodes, versionNodes, allversions = dt.loadTables(config.getDbPath(app, plugin), False)
                     versInDb = len(allversions)
                     versOnDisk = len([entry for entry in os.listdir(config.getAppPluginPath(app, plugin)) if re.match(plugin+config.APP_CONFIG[app]["pluginsDirectoryRegex"], entry)])
                     if versInDb != versOnDisk:
@@ -143,20 +144,20 @@ def updateDbs(apps):
                         dt.saveTables(config.getDbPath(app, plugin), pathNodes, versionNodes, allversions)
                     else:
                         print(".")
-                    
+
 
 
 
 if __name__ == '__main__':
- 
+
     USAGE = "usage: %prog [options] appName"
-    EPILOGUE = "Download newly-available releases of supported WebApplications.\nUse \"all\" as an app name to update all known." 
-    
+    EPILOGUE = "Download newly-available releases of supported WebApplications.\nUse \"all\" as an app name to update all known."
+
     parser = OptionParser(usage=USAGE, epilog=EPILOGUE)
     parser.add_option("-p", "--plugins", action="store_true", help="Fetch all plugins for the given app")
     parser.add_option("-u", "--updateDBs", action="store_true", help="Update databases (developer use only)")
-    
- 
+
+
     (options, args) = parser.parse_args()
 
     if options.updateDBs:
@@ -165,12 +166,12 @@ if __name__ == '__main__':
        print(args)
        updateDbs(args)
        quit()
-    
+
     if len(args) < 1:
         print("Error: AppName is required\n")
         parser.print_help()
         quit()
- 
+
     if args[0] == "all":
         for func in [s for s in sorted(globals().keys()) if s.startswith("fetch")]:
             print(func)
@@ -187,4 +188,4 @@ if __name__ == '__main__':
         print("Error: "+args[0]+" is not supported for fetching latest versions (do it manually or add it here)\n")
         parser.print_help()
         quit()
- 
+
