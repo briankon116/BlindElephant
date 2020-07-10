@@ -97,9 +97,12 @@ class WebAppFingerprinter(object):
             url = self.url + (path if path.startswith("/") else "/"+path)
             data = str(wafu.urlread_spoof_ua(url))
             self._host_down_errors = 0
-            hash = hashlib.md5(str.encode(data + path)).hexdigest()
+            if(type(data) == bytes):
+                hash = hashlib.md5(data + str.encode(path)).hexdigest()
+            else:
+                hash = hashlib.md5(str.encode(data + path)).hexdigest()
 
-            if hash in self.path_nodes:
+            if path in self.path_nodes:
                 possible_vers = self.path_nodes[path][hash]
                 self.logger.logFileHit(path, possible_vers, None, None, False)
                 return possible_vers
@@ -107,7 +110,6 @@ class WebAppFingerprinter(object):
                 #HACKHACK TODO: Implement proper solution to small modifications of
                 #source files
                 ms = wafm.MASSAGERS
-
                 #run all combinations of massagers to see if they can change the
                 #remote file into something we expect
                 for i in range(1, len(ms)+1):
@@ -115,7 +117,10 @@ class WebAppFingerprinter(object):
                         massagedData = data
                         for m in massagersTpl:
                             massagedData = m(massagedData)
-                        massagedhash = hashlib.md5(str.encode(massagedData + path)).hexdigest()
+                        if(type(massagedData) == bytes):
+                            massagedhash = hashlib.md5(massagedData + str.encode(path)).hexdigest()
+                        else:
+                            massagedhash = hashlib.md5(str.encode(massagedData + path)).hexdigest()
                         if massagedhash in self.path_nodes[path]:
                             possible_vers = self.path_nodes[path][massagedhash]
                             self.logger.logFileHit(path, possible_vers, "", None, False) #TODO: log massager use

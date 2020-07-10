@@ -102,8 +102,10 @@ def computeTables(basepath, versionDirectoryRegex="", directoryExcludeRegex="", 
                 path = path[path.index(appdir)+len(appdir):]
                 #print "Path: ", path, "(root=", root, ", appdir=", appdir, ", name=", name,")"
                 fileContents = open(join(root,name), 'rb').read()
-                print(fileContents + str.encode(path))
-                hash = hashlib.md5(fileContents + str.encode(path)).hexdigest()
+                if(type(fileContents) == bytes):
+                    hash = hashlib.md5(fileContents + str.encode(path)).hexdigest()
+                else:
+                    hash = hashlib.md5(str.encode(fileContents  + path)).hexdigest()
 
                 #print version,join(root, name).replace(dir + "/", "", 1), hashlib.md5(open(join(root, name)).read()).hexdigest()
                 node = (version, path, hash)
