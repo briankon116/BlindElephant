@@ -102,7 +102,7 @@ class WebAppFingerprinter(object):
             else:
                 hash = hashlib.md5(str.encode(data + path)).hexdigest()
 
-            if path in self.path_nodes:
+            if hash in self.path_nodes:
                 possible_vers = self.path_nodes[path][hash]
                 self.logger.logFileHit(path, possible_vers, None, None, False)
                 return possible_vers
